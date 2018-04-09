@@ -58,6 +58,14 @@ sed -i -- 's/iface wlan0 inet manual//g' /etc/network/interfaces
 sed -i -- 's/    wpa-conf \/etc\/wpa_supplicant\/wpa_supplicant.conf//g' /etc/network/interfaces
 sed -i -- 's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd.conf"/g' /etc/default/hostapd
 
+# setup iptables
+sh -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+iptables-save > /etc/iptables.ipv4.nat
+
+
 cat >> /etc/network/interfaces <<EOF
 # Added by rPi Access Point Setup
 allow-hotplug wlan0
@@ -71,6 +79,7 @@ iface wlan0 inet static
 auto eth0
     allow-hotplug eth0
     iface eth0 inet dhcp
+    pre-up iptables-restore < /etc/iptables.ipv4.nat
 
 EOF
 
